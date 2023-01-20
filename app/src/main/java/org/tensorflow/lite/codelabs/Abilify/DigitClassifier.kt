@@ -29,7 +29,7 @@ import java.util.concurrent.Executors
 import org.tensorflow.lite.Interpreter
 
 class DigitClassifier(private val context: Context) {
-  // TODO: Add a TF Lite interpreter as a field.
+
   private var interpreter: Interpreter? = null
   var isInitialized = false
     private set
@@ -56,14 +56,11 @@ class DigitClassifier(private val context: Context) {
 
   @Throws(IOException::class)
   private fun initializeInterpreter() {
-    // TODO: Load the TF Lite model from file and initialize an interpreter.
 
     // Load the TF Lite model from asset folder and initialize TF Lite Interpreter with NNAPI enabled.
     val assetManager = context.assets
     val model = loadModelFile(assetManager, "mnist.tflite")
     val interpreter = Interpreter(model)
-
-    // TODO: Read the model input shape from model file.
 
     // Read input shape from model file.
     val inputShape = interpreter.getInputTensor(0).shape()
@@ -92,7 +89,6 @@ class DigitClassifier(private val context: Context) {
   private fun classify(bitmap: Bitmap): String {
     check(isInitialized) { "TF Lite Interpreter is not initialized yet." }
 
-    // TODO: Add code to run inference with TF Lite.
     // Pre-processing: resize the input image to match the model input shape.
     val resizedImage = Bitmap.createScaledBitmap(
       bitmap,

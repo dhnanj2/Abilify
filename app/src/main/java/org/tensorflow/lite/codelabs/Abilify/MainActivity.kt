@@ -24,14 +24,17 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.divyanshu.draw.widget.DrawView
+import android.speech.tts.TextToSpeech;
+import java.util.*
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
   private var drawView: DrawView? = null
   private var clearButton: ImageButton? = null
   private var predictedTextView: TextView? = null
   private var digitClassifier = DigitClassifier(this)
+  private var textToSpeech: TextToSpeech? = null
 
   @SuppressLint("ClickableViewAccessibility")
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,14 +48,23 @@ class MainActivity : AppCompatActivity() {
     drawView?.setBackgroundColor(Color.BLACK)
     clearButton = findViewById(R.id.backspace)
     predictedTextView = findViewById(R.id.no_to_dial)
+    textToSpeech = TextToSpeech(this, this)
 
     // Setup clear drawing button.
     clearButton?.setOnClickListener {
 //      drawView?.clearCanvas()
         var str = predictedTextView?.text.toString()
         if(str.isEmpty()) return@setOnClickListener
+
+//        define text to speak
+        var dig = "Erased " + str.substring(str.length-1)
+
+//      pop out the last digit
         str =  str.substring(0,str.length-1);
         predictedTextView?.text = str;
+
+//      speak out the erased digit
+        textToSpeech!!.speak(dig,TextToSpeech.QUEUE_ADD,null,"")
     }
 
     // Setup classification trigger so that it classify after every stroke drew.
@@ -80,6 +92,7 @@ class MainActivity : AppCompatActivity() {
     // Sync DigitClassifier instance lifecycle with MainActivity lifecycle,
     // and free up resources (e.g. TF Lite instance) once the activity is destroyed.
     digitClassifier.close()
+    textToSpeech?.shutdown()
     super.onDestroy()
   }
 
@@ -90,11 +103,18 @@ class MainActivity : AppCompatActivity() {
       digitClassifier
         .classifyAsync(bitmap)
         .addOnSuccessListener { resultText -> predictedTextView?.append(resultText)
+
+          //speak out the recognised digit
+          textToSpeech!!.speak(resultText,TextToSpeech.QUEUE_ADD,null,"")
+
           //if 10 digits of the number has been entered, request a phone call through Intent
           if(predictedTextView?.text?.length==10) {
             val numTxt = (predictedTextView?.text?.toString()?.trim())
             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:"+numTxt))
             startActivity(intent)
+
+            //speak out the dialing message
+            textToSpeech!!.speak("Dialing",TextToSpeech.QUEUE_ADD,null,"")
           }
         }
         .addOnFailureListener { e ->
@@ -110,4 +130,24 @@ class MainActivity : AppCompatActivity() {
   companion object {
     private const val TAG = "MainActivity"
   }
+
+  override fun onInit(status: Int) {
+    if (status == TextToSpeech.SUCCESS) {
+      // set US English as language for tts
+      val result = textToSpeech!!.setLanguage(Locale.US)
+
+      if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+        Log.e("TTS","The Language specified is not supported!")
+      } else {
+        clearButton!!.isEnabled = true
+
+        //speak out to message to enter number
+        textToSpeech!!.speak("Draw digits to Dial",TextToSpeech.QUEUE_ADD,null,"")
+      }
+
+    } else {
+      Log.e("TTS", "Initilization Failed!")
+    }
+  }
+
 }
